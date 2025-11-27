@@ -1,12 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { Alert } from "../types";
-
-const mockAlerts: Alert[] = [
-  { id: "1", type: "groundVibrations", message: "High Ground Vibration Detected", severity: "high", timestamp: new Date(Date.now() - 120000).toISOString(), acknowledged: false },
-  { id: "2", type: "soilMoisture", message: "Soil Moisture Below Threshold", severity: "medium", timestamp: new Date(Date.now() - 900000).toISOString(), acknowledged: false },
-  { id: "3", type: "voltage", message: "Voltage Fluctuation Detected", severity: "low", timestamp: new Date(Date.now() - 3600000).toISOString(), acknowledged: true },
-];
+import { collection, onSnapshot, updateDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const severityStyles = {
   high: "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200",
@@ -23,12 +19,19 @@ function formatTimeAgo(timestamp: string) {
 }
 
 export default function Alerts() {
-  const [alerts, setAlerts] = useState(mockAlerts);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  // Remove emailNotifications and pushNotifications toggles since backend handles SMS
 
-  const acknowledgeAlert = (id: string) => {
-    setAlerts((prevAlerts) => prevAlerts.map((alert) => alert.id === id ? { ...alert, acknowledged: true } : alert));
+  useEffect(() => {
+    // Listen to alerts in real time
+    const unsub = onSnapshot(collection(db, "alerts"), (snapshot) => {
+      setAlerts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Alert));
+    });
+    return () => unsub();
+  }, []);
+
+  const acknowledgeAlert = async (id: string) => {
+    await updateDoc(doc(db, "alerts", id), { acknowledged: true });
   };
 
   return (
@@ -75,30 +78,10 @@ export default function Alerts() {
           ))}
         </div>
       </div>
-
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Alert Settings</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">Email Notifications</h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Receive alerts via email</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={emailNotifications} onChange={() => setEmailNotifications(!emailNotifications)} />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">Push Notifications</h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Receive alerts on your device</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={pushNotifications} onChange={() => setPushNotifications(!pushNotifications)} />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-            </label>
-          </div>
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Mobile Notifications</h3>
+        <div className="text-gray-600 dark:text-gray-300">
+          You will receive real-time SMS notifications on your registered mobile number whenever a new alert is created.
         </div>
       </div>
     </div>

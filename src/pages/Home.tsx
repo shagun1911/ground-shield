@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Battery,
   Zap,
@@ -6,24 +6,35 @@ import {
   Wind,
   Droplets,
   Activity,
-  Bell,
   ShieldCheck,
 } from "lucide-react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import SensorCard from "../components/SensorCard";
 import { SensorData } from "../types";
 
-const mockSensorData: SensorData = {
-  voltage: 220,
-  current: 10,
-  earthContinuity: 0.5,
-  soilTemperature: 25,
-  airQuality: 85,
-  soilMoisture: 60,
-  groundVibrations: 0.2,
-  timestamp: new Date().toISOString(),
-};
-
 export default function Home() {
+  const [sensorData, setSensorData] = useState<SensorData>({
+    voltage: 0,
+    current: 0,
+    earthContinuity: 0,
+    soilTemperature: 0,
+    airQuality: 0,
+    soilMoisture: 0,
+    groundVibrations: 0,
+    timestamp: new Date().toISOString(),
+  });
+
+  useEffect(() => {
+    // Listen to the latest sensor data in real time
+    const unsub = onSnapshot(collection(db, "sensors"), (snapshot) => {
+      // Assuming only one document for latest data
+      const docs = snapshot.docs.map(doc => doc.data());
+      if (docs.length > 0) setSensorData(docs[0] as SensorData);
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <div className="space-y-10 p-6">
       {/* Hero Section */}
@@ -60,7 +71,7 @@ export default function Home() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         <SensorCard
           title="Voltage"
-          value={mockSensorData.voltage}
+          value={sensorData.voltage}
           unit="V"
           icon={Battery}
           color="bg-blue-500"
@@ -68,7 +79,7 @@ export default function Home() {
         />
         <SensorCard
           title="Current"
-          value={mockSensorData.current}
+          value={sensorData.current}
           unit="A"
           icon={Zap}
           color="bg-yellow-500"
@@ -76,7 +87,7 @@ export default function Home() {
         />
         <SensorCard
           title="Earth Continuity"
-          value={mockSensorData.earthContinuity}
+          value={sensorData.earthContinuity}
           unit="Ω"
           icon={Activity}
           color="bg-green-500"
@@ -84,7 +95,7 @@ export default function Home() {
         />
         <SensorCard
           title="Soil Temperature"
-          value={mockSensorData.soilTemperature}
+          value={sensorData.soilTemperature}
           unit="°C"
           icon={ThermometerSun}
           color="bg-red-500"
@@ -92,7 +103,7 @@ export default function Home() {
         />
         <SensorCard
           title="Air Quality"
-          value={mockSensorData.airQuality}
+          value={sensorData.airQuality}
           unit="AQI"
           icon={Wind}
           color="bg-purple-500"
@@ -100,7 +111,7 @@ export default function Home() {
         />
         <SensorCard
           title="Soil Moisture"
-          value={mockSensorData.soilMoisture}
+          value={sensorData.soilMoisture}
           unit="%"
           icon={Droplets}
           color="bg-cyan-500"
@@ -108,7 +119,7 @@ export default function Home() {
         />
         <SensorCard
           title="Ground Vibrations"
-          value={mockSensorData.groundVibrations}
+          value={sensorData.groundVibrations}
           unit="g"
           icon={Activity}
           color="bg-orange-500"

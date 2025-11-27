@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   LineChart, 
@@ -12,18 +12,26 @@ import {
   AreaChart
 } from 'recharts';
 import { AlertTriangle, ThumbsUp, Info, ArrowLeft, Activity, AlertCircle } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import { sensorInfo } from '../data/sensorInfo';
-
-const mockHistoricalData = Array.from({ length: 24 }, (_, i) => ({
-  time: `${i}:00`,
-  value: Math.random() * 100,
-  threshold: 75
-}));
 
 export default function SensorDetail() {
   const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
   const info = type ? sensorInfo[type] : null;
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!type) return;
+    // Listen to historical sensor data for this type
+    const q = query(collection(db, `sensorHistory_${type}`), orderBy("timestamp", "desc"), limit(24));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data());
+      setHistoricalData(data.reverse()); // reverse for chronological order
+    });
+    return () => unsub();
+  }, [type]);
 
   if (!info) {
     return (
@@ -86,7 +94,7 @@ export default function SensorDetail() {
         <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Real-time Monitoring</h3>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mockHistoricalData}>
+            <AreaChart data={historicalData}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={`rgb(59, 130, 246)`} stopOpacity={0.8}/>
